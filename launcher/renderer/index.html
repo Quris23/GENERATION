@@ -12,11 +12,16 @@
   <div class="vignette"></div>
 
   <header>
-    <img class="logo" src="logo.png" alt="The Last New Year" draggable="false">
-    <div class="win-buttons">
-      <button id="fullscreen" class="ghost" title="Полный экран / окно">⤢</button>
-      <button id="quit" class="ghost" title="Выйти">✕</button>
+    <!-- window buttons in the macOS manner; on macOS itself the system draws its own here -->
+    <div id="traffic" class="traffic hidden">
+      <button id="win-close" class="light close" title="Закрыть"><svg viewBox="0 0 12 12"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5"/></svg></button>
+      <button id="win-min" class="light min" title="Свернуть"><svg viewBox="0 0 12 12"><path d="M3 6h6"/></svg></button>
+      <button id="win-full" class="light full" title="На весь экран"><svg viewBox="0 0 12 12"><path class="fill" d="M3.2 7.6V3.2h4.4zM8.8 4.4v4.4H4.4z"/></svg></button>
     </div>
+    <img class="logo" src="logo.png" alt="The Last New Year" draggable="false">
+    <button id="open-settings" class="icon-button" title="Настройки">
+      <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
   </header>
 
   <main>
@@ -50,22 +55,41 @@
         <p class="hint" id="server-hint"></p>
       </section>
 
-      <section class="card settings">
-        <h2>Настройки</h2>
-        <label>Папка игры
-          <div class="row">
-            <input id="root" readonly>
-            <button id="choose-root">Изменить</button>
-          </div>
-        </label>
-        <label>Выделенная RAM: <b id="memory-value"></b>
-          <input id="memory" type="range" step="512">
-          <span class="hint" id="memory-hint"></span>
-        </label>
-        <button id="open-folder" class="ghost wide">Открыть папку игры (моды, шейдеры, ресурспаки)</button>
-      </section>
+      <button id="open-folder" class="ghost wide">Папка игры: моды, шейдеры, ресурспаки</button>
     </div>
   </main>
+
+  <!-- settings, behind the gear button -->
+  <div id="settings" class="modal hidden">
+    <section class="card dialog">
+      <div class="dialog-head">
+        <h2>Настройки</h2>
+        <button id="close-settings" class="icon-button small" title="Закрыть">✕</button>
+      </div>
+      <label>Папка игры
+        <div class="row">
+          <input id="root" readonly>
+          <button id="choose-root">Изменить</button>
+        </div>
+      </label>
+      <label>Выделенная RAM: <b id="memory-value"></b>
+        <input id="memory" type="range" step="512">
+        <span class="hint" id="memory-hint"></span>
+      </label>
+      <label>Громкость заставки (интро): <b id="intro-value"></b>
+        <input id="intro-volume" type="range" min="0" max="100" step="1">
+      </label>
+      <label>Громкость музыки в лаунчере: <b id="music-value"></b>
+        <input id="music-volume" type="range" min="0" max="100" step="1">
+      </label>
+      <label class="switch-row">
+        <span>Игра на весь экран</span>
+        <input id="game-fullscreen" type="checkbox" class="switch">
+      </label>
+    </section>
+  </div>
+
+  <audio id="music" src="music/end.m4a" loop preload="auto"></audio>
 
   <footer>
     <div class="status">
@@ -78,5 +102,6 @@
   <div id="toast" class="toast hidden"></div>
   <script type="module" src="bg.js"></script>
   <script type="module" src="app.js"></script>
+  <script type="module" src="fx.js"></script>
 </body>
 </html>

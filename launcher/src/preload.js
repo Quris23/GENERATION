@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld('gen', {
   serverStatus: () => ipcRenderer.invoke('server:status'),
   quit: () => ipcRenderer.invoke('app:quit'),
   toggleFullscreen: () => ipcRenderer.invoke('app:fullscreen'),
+  minimize: () => ipcRenderer.invoke('app:minimize'),
+  windowInfo: () => ipcRenderer.invoke('app:window'),
+  onWindowState: cb => ipcRenderer.on('window:state', (_e, s) => cb(s)),
   onProgress: cb => ipcRenderer.on('progress', (_e, p) => cb(p)),
   onGameExit: cb => ipcRenderer.on('game:exit', (_e, code) => cb(code)),
 });

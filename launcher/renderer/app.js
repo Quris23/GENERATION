@@ -146,6 +146,11 @@ async function init() {
   $('memory').max = max;
   $('memory').value = Math.min(settings.memoryMB, max);
   showMemory();
+  $('intro-volume').value = Math.round(settings.introVolume * 100);
+  $('music-volume').value = Math.round(settings.musicVolume * 100);
+  $('game-fullscreen').checked = settings.gameFullscreen;
+  showVolumes();
+  startMusic();
   sizePreview();
   await refreshLook();
   checkStatus();
@@ -188,8 +193,48 @@ $('choose-root').addEventListener('click', async () => {
   checkStatus();
 });
 $('open-folder').addEventListener('click', () => gen.openGameFolder());
-$('quit').addEventListener('click', () => gen.quit());
-$('fullscreen').addEventListener('click', () => gen.toggleFullscreen());
+
+// ---- window: macOS draws its own buttons (we only leave room for them); elsewhere ours, in the same manner -------------
+async function setupWindow() {
+  const w = await gen.windowInfo();
+  document.body.classList.add(w.platform === 'darwin' ? 'mac' : 'custom-frame');
+  if (w.platform !== 'darwin') $('traffic').classList.remove('hidden');
+  document.body.classList.toggle('fullscreen', w.fullscreen);
+  gen.onWindowState(s => document.body.classList.toggle('fullscreen', s.fullscreen));
+}
+$('win-close').addEventListener('click', () => gen.quit());
+$('win-min').addEventListener('click', () => gen.minimize());
+$('win-full').addEventListener('click', () => gen.toggleFullscreen());
+setupWindow();
+
+// ---- settings dialog, volumes, music -------------------------------------------------------------------------------------
+const music = $('music');
+const percent = v => `${Math.round(v * 100)}%`;
+function showVolumes() {
+  $('intro-value').textContent = percent(settings.introVolume);
+  $('music-value').textContent = percent(settings.musicVolume);
+  music.volume = settings.musicVolume;
+}
+function startMusic() {
+  if (settings.musicVolume > 0) music.play().catch(() => {});
+}
+$('open-settings').addEventListener('click', () => $('settings').classList.remove('hidden'));
+$('close-settings').addEventListener('click', () => $('settings').classList.add('hidden'));
+$('settings').addEventListener('click', e => { if (e.target === $('settings')) $('settings').classList.add('hidden'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('settings').classList.add('hidden'); });
+for (const [input, key] of [['intro-volume', 'introVolume'], ['music-volume', 'musicVolume']]) {
+  $(input).addEventListener('input', e => {
+    settings[key] = Number(e.target.value) / 100;
+    showVolumes();
+    if (key === 'musicVolume') settings.musicVolume > 0 ? startMusic() : music.pause();
+  });
+  $(input).addEventListener('change', async e => {
+    settings = await gen.setSettings({ [key]: Number(e.target.value) / 100 });
+  });
+}
+$('game-fullscreen').addEventListener('change', async e => {
+  settings = await gen.setSettings({ gameFullscreen: e.target.checked });
+});
 
 $('skin-model').addEventListener('click', async () => {
   await gen.setSkinModel(look.model === 'slim' ? 'classic' : 'slim');
@@ -220,6 +265,7 @@ gen.onGameExit(code => {
   setStatus(code === 0 ? 'Игра закрыта' : `Игра завершилась с ошибкой (код ${code}). Лог: game/logs/latest.log`, 1);
   $('play').disabled = false;
   $('play').textContent = 'ИГРАТЬ';
+  startMusic();
   refreshServer();
 });
 
@@ -231,7 +277,10 @@ $('play').addEventListener('click', async () => {
     toast(r?.error || 'Не удалось запустить');
     $('play').disabled = false;
     setStatus('Ошибка', 0);
-  } else setStatus('Игра запущена', 1);
+  } else {
+    setStatus('Игра запущена', 1);
+    music.pause();   // the game has its own music
+  }
 });
 
 init();

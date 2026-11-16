@@ -16,7 +16,20 @@ const defaults = () => ({
   root: process.env.GENERATION_ROOT || path.join(app.getPath('documents'), 'The Last New Year'),   // env: development aid
   memoryMB: Math.min(8192, Math.max(4096, Math.floor((game.totalMemoryMB() - 4096) / 512) * 512)),
   nickname: '',
+  gameFullscreen: true,   // the game opens full screen (macOS: its own space)
+  introVolume: 0.8,       // the intro cinematic, written to the game's options.txt before a launch
+  musicVolume: 0.25,      // the launcher's menu music
 });
+
+// the intro cinematic's volume lives in the game's options.txt as lny_cinematicVolume (0..1)
+async function writeIntroVolume(gameDir, volume) {
+  const file = path.join(gameDir, 'options.txt');
+  let text = '';
+  try { text = await fsp.readFile(file, 'utf8'); } catch {}
+  const line = `lny_cinematicVolume:${Math.max(0, Math.min(1, Number(volume) || 0))}`;
+  text = /^lny_cinematicVolume:.*$/m.test(text) ? text.replace(/^lny_cinematicVolume:.*$/m, line) : text + (text && !text.endsWith('\n') ? '\n' : '') + line + '\n';
+  await fsp.writeFile(file, text);
+}
 
 function loadSettings() {
   try { return { ...defaults(), ...JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) }; }
@@ -30,16 +43,36 @@ async function saveSettings(s) {
 let win;
 let busy = false;
 
+const isMac = process.platform === 'darwin';
+
 function createWindow() {
+  const s = loadSettings();
+  const b = s.windowBounds || {};
   win = new BrowserWindow({
-    width: 1280, height: 800, minWidth: 960, minHeight: 640,
-    fullscreen: true,                  // opens full screen, on macOS as a native full-screen space
+    width: b.width || 1280, height: b.height || 800, x: b.x, y: b.y, minWidth: 1000, minHeight: 680,
+    fullscreen: !!s.launcherFullscreen,   // opens the way it was left: a window or full screen (on macOS its own space)
     backgroundColor: '#0d0b14',
     title: 'The Last New Year',
     autoHideMenuBar: true,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
+    // macOS: the system's own window buttons, set into the page; elsewhere a frameless window with our own
+    ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 18 } } : { frame: false }),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false,
+      autoplayPolicy: 'no-user-gesture-required',   // the menu music starts by itself
+    },
   });
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
+
+  const remember = async patch => saveSettings({ ...loadSettings(), ...patch });
+  win.on('enter-full-screen', () => { remember({ launcherFullscreen: true }); send('window:state', { fullscreen: true }); });
+  win.on('leave-full-screen', () => { remember({ launcherFullscreen: false }); send('window:state', { fullscreen: false }); });
+  win.on('close', () => {
+    if (!win.isFullScreen() && !win.isMaximized()) {
+      const settings = { ...loadSettings(), windowBounds: win.getBounds() };
+      fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
+      fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2));
+    }
+  });
 
   // development aid: GENERATION_SCREENSHOT=<png> renders the window off screen, saves it and quits
   const shot = process.env.GENERATION_SCREENSHOT;
@@ -92,7 +125,10 @@ ipcMain.handle('pack:play', async () => {
     const { javaBin, versionId } = await game.prepare(s.root, manifest, progress);
     await pack.sync(path.join(s.root, 'game'), manifest, progress);
     progress('Запуск', 1, 1);
-    const proc = await game.launchGame({ root: s.root, javaBin, versionId, nickname: s.nickname, memoryMB: s.memoryMB });
+    await writeIntroVolume(path.join(s.root, 'game'), s.introVolume);
+    const proc = await game.launchGame({
+      root: s.root, javaBin, versionId, nickname: s.nickname, memoryMB: s.memoryMB, fullscreen: s.gameFullscreen,
+    });
     const logPath = path.join(s.root, 'game/logs/launcher-latest.log');
     await fsp.mkdir(path.dirname(logPath), { recursive: true });
     const log = fs.createWriteStream(logPath);
@@ -143,6 +179,8 @@ ipcMain.handle('server:status', async () => {
 
 ipcMain.handle('app:quit', () => app.quit());
 ipcMain.handle('app:fullscreen', () => win.setFullScreen(!win.isFullScreen()));
+ipcMain.handle('app:minimize', () => win.minimize());
+ipcMain.handle('app:window', () => ({ platform: process.platform, fullscreen: win.isFullScreen() }));
 
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => app.quit());

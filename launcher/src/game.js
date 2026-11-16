@@ -167,7 +167,9 @@ async function cleanVersionJson(runtimeDir, id) {
   if (v.inheritsFrom) await cleanVersionJson(runtimeDir, v.inheritsFrom);
 }
 
-async function launchGame({ root, javaBin, versionId, nickname, memoryMB }) {
+// fullscreen: macOS — the pack's GENERATION Skins mod moves the window into the system's own full screen (a separate
+// desktop); elsewhere Minecraft's --fullscreen
+async function launchGame({ root, javaBin, versionId, nickname, memoryMB, fullscreen }) {
   const { launch } = require('@xmcl/core');
   const gameDir = path.join(root, 'game');
   const runtimeDir = path.join(root, 'runtime');
@@ -185,7 +187,9 @@ async function launchGame({ root, javaBin, versionId, nickname, memoryMB }) {
     minMemory: 1024,
     maxMemory: memoryMB,
     extraJVMArgs: ['-XX:+UseG1GC', '-XX:+UnlockExperimentalVMOptions', '-XX:G1NewSizePercent=20',
-      '-XX:G1ReservePercent=20', '-XX:MaxGCPauseMillis=50', '-XX:G1HeapRegionSize=32M'],
+      '-XX:G1ReservePercent=20', '-XX:MaxGCPauseMillis=50', '-XX:G1HeapRegionSize=32M',
+      ...(fullscreen && isMac ? ['-Dgeneration.fullscreen=true'] : [])],
+    extraMCArgs: fullscreen && !isMac ? ['--fullscreen'] : [],
     extraExecOption: { detached: true, cwd: gameDir },
   });
   return proc;

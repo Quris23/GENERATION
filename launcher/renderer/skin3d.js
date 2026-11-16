@@ -58,6 +58,9 @@ export function createPreview(canvas) {
       [skin.head, 32, 0], [skin.body, 16, 32], [skin.rightArm, 40, 32],
       [skin.leftArm, 48, 48], [skin.rightLeg, 0, 32], [skin.leftLeg, 0, 48],
     ];
+    // cubes a hair smaller than a pixel, a different hair for every part: no two faces ever share a plane, so nothing
+    // flickers where a sleeve meets the jacket or a cube touches the skin under it
+    parts.forEach(([part], n) => (part.cubeSize = 0.96 - n * 0.006));
     for (const [part, u, v] of parts) {
       part.outerLayer.visible = false;
       if (legacy && part !== skin.head) continue;
@@ -75,9 +78,11 @@ export function createPreview(canvas) {
       if (!cubes.length) continue;
       const mesh = new THREE.InstancedMesh(CUBE, MATERIAL, cubes.length);
       const m = new THREE.Matrix4();
+      const scale = new THREE.Matrix4().makeScale(part.cubeSize, part.cubeSize, part.cubeSize);
       const color = new THREE.Color();
       cubes.forEach(([[x, y, z], r, gr, b], n) => {
-        mesh.setMatrixAt(n, m.makeTranslation(inner.position.x + x, inner.position.y + y, inner.position.z + z));
+        m.makeTranslation(inner.position.x + x, inner.position.y + y, inner.position.z + z).multiply(scale);
+        mesh.setMatrixAt(n, m);
         mesh.setColorAt(n, color.setRGB(r / 255, gr / 255, b / 255, THREE.SRGBColorSpace));
       });
       inner.parent.add(mesh);
