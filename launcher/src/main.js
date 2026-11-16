@@ -12,7 +12,7 @@ const MANIFEST_URL = process.env.GENERATION_MANIFEST
 
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 const defaults = () => ({
-  root: path.join(app.getPath('documents'), 'GENERATION'),
+  root: path.join(app.getPath('documents'), 'The Last New Year'),
   memoryMB: Math.min(8192, Math.max(4096, Math.floor((game.totalMemoryMB() - 4096) / 512) * 512)),
   nickname: '',
 });
@@ -34,7 +34,7 @@ function createWindow() {
     width: 1280, height: 800, minWidth: 960, minHeight: 640,
     fullscreen: true,                  // opens full screen, on macOS as a native full-screen space
     backgroundColor: '#0d0b14',
-    title: 'GENERATION',
+    title: 'The Last New Year',
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
@@ -61,7 +61,7 @@ ipcMain.handle('settings:set', async (_e, patch) => {
 });
 
 ipcMain.handle('folder:choose', async () => {
-  const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'], title: 'Папка для GENERATION' });
+  const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'], title: 'Папка для The Last New Year' });
   return r.canceled ? null : r.filePaths[0];
 });
 ipcMain.handle('folder:open', async () => {

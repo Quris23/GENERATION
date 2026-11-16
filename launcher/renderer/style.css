@@ -1,11 +1,11 @@
 :root {
   --bg: #0d0b14;
-  --panel: rgba(24, 20, 36, 0.82);
-  --line: rgba(160, 130, 255, 0.18);
+  --panel: rgba(18, 12, 28, 0.78);
+  --line: rgba(244, 181, 43, 0.20);
   --text: #ece8f6;
   --muted: #9a93b0;
-  --accent: #8f6bff;
-  --accent-2: #47d6c4;
+  --accent: #f4b52b;
+  --accent-2: #d257ff;
   --danger: #ff6b7a;
 }
 * { box-sizing: border-box; }
@@ -21,9 +21,9 @@ body {
 .bg {
   position: fixed; inset: 0; z-index: -1;
   background:
-    radial-gradient(1200px 700px at 15% 10%, rgba(143, 107, 255, 0.28), transparent 60%),
-    radial-gradient(900px 600px at 90% 90%, rgba(71, 214, 196, 0.18), transparent 60%),
-    linear-gradient(180deg, #120f1d, #07060b);
+    linear-gradient(180deg, rgba(8, 6, 14, 0.25), rgba(8, 6, 14, 0.85)),
+    radial-gradient(900px 600px at 85% 95%, rgba(210, 87, 255, 0.22), transparent 60%),
+    url("stars.jpg") center / cover;
 }
 header {
   display: flex; align-items: center; justify-content: space-between;
@@ -31,9 +31,9 @@ header {
   -webkit-app-region: drag;
 }
 .logo {
-  font-size: 44px; font-weight: 800; letter-spacing: 0.32em;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  height: 120px; width: auto;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
+  -webkit-app-region: no-drag;
 }
 .win-buttons { display: flex; gap: 8px; -webkit-app-region: no-drag; }
 main {
@@ -57,8 +57,8 @@ input, select, button {
 input:focus, select:focus { border-color: var(--accent); }
 input { width: 100%; user-select: text; }
 input[type=range] { padding: 0; accent-color: var(--accent); }
-button { cursor: pointer; background: rgba(143, 107, 255, 0.18); white-space: nowrap; }
-button:hover:not(:disabled) { background: rgba(143, 107, 255, 0.32); }
+button { cursor: pointer; background: rgba(244, 181, 43, 0.16); white-space: nowrap; }
+button:hover:not(:disabled) { background: rgba(244, 181, 43, 0.30); }
 button:disabled { opacity: 0.5; cursor: default; }
 button.ghost { background: transparent; }
 button.ghost:hover { background: rgba(255, 255, 255, 0.08); }
@@ -82,10 +82,11 @@ footer {
 #bar-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.2s; }
 .play {
   min-width: 260px; padding: 20px 40px; font-size: 24px; font-weight: 800; letter-spacing: 0.2em;
-  background: linear-gradient(90deg, var(--accent), #6a4bdc); border: none; border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(143, 107, 255, 0.35);
+  color: #2a1204;
+  background: linear-gradient(180deg, #ffd85a, #e99a17); border: none; border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(244, 181, 43, 0.35), inset 0 -4px 0 rgba(120, 50, 0, 0.45);
 }
-.play:hover:not(:disabled) { filter: brightness(1.12); background: linear-gradient(90deg, var(--accent), #6a4bdc); }
+.play:hover:not(:disabled) { filter: brightness(1.1); background: linear-gradient(180deg, #ffd85a, #e99a17); }
 .toast {
   position: fixed; left: 50%; bottom: 140px; transform: translateX(-50%);
   max-width: 70%; padding: 14px 20px; border-radius: 12px; white-space: pre-wrap;

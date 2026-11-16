@@ -1,4 +1,4 @@
-# GENERATION
+# The Last New Year — launcher of the GENERATION modpack
 
 Launcher for the GENERATION modpack (NeoForge 1.21.1) for macOS and Windows.
 
