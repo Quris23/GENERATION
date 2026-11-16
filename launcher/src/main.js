@@ -39,6 +39,16 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
+
+  // development aid: GENERATION_SCREENSHOT=<png> renders the window off screen, saves it and quits
+  const shot = process.env.GENERATION_SCREENSHOT;
+  if (shot) {
+    win.hide();
+    win.webContents.once('did-finish-load', () => setTimeout(async () => {
+      await fsp.writeFile(shot, (await win.webContents.capturePage()).toPNG());
+      app.quit();
+    }, 4000));
+  }
 }
 
 const send = (ch, ...a) => win && !win.isDestroyed() && win.webContents.send(ch, ...a);
