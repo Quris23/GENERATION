@@ -16,6 +16,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -33,6 +34,8 @@ EXCLUDE = [
     "config/ftbquests/quests/../local",
 ]
 EXCLUDE_NAMES = {".DS_Store", "Thumbs.db"}
+# our own safety copies and switched-off scripts: x.toml.bak, x.bak_20261110, x.before-slots, x-backup.json, x.js.disabled
+BACKUP_NAME = re.compile(r"\.bak($|_)|\.before-|\.orig$|\.old$|[-_.]backup\.|\.disabled$", re.I)
 # player preferences: written once, then the player's
 DEFAULT_FILES = ["options.txt", "servers.dat"]
 
@@ -49,7 +52,9 @@ def sha1(data):
 
 
 def excluded(rel):
-    return any(rel == e or rel.startswith(e + "/") for e in EXCLUDE) or rel.split("/")[-1] in EXCLUDE_NAMES
+    name = rel.split("/")[-1]
+    return (any(rel == e or rel.startswith(e + "/") for e in EXCLUDE) or name in EXCLUDE_NAMES
+            or BACKUP_NAME.search(name) is not None)
 
 
 blobs = OUT / "blobs"
