@@ -1,0 +1,97 @@
+:root {
+  --bg: #0d0b14;
+  --panel: rgba(24, 20, 36, 0.82);
+  --line: rgba(160, 130, 255, 0.18);
+  --text: #ece8f6;
+  --muted: #9a93b0;
+  --accent: #8f6bff;
+  --accent-2: #47d6c4;
+  --danger: #ff6b7a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+.bg {
+  position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(1200px 700px at 15% 10%, rgba(143, 107, 255, 0.28), transparent 60%),
+    radial-gradient(900px 600px at 90% 90%, rgba(71, 214, 196, 0.18), transparent 60%),
+    linear-gradient(180deg, #120f1d, #07060b);
+}
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 28px 48px 0;
+  -webkit-app-region: drag;
+}
+.logo {
+  font-size: 44px; font-weight: 800; letter-spacing: 0.32em;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.win-buttons { display: flex; gap: 8px; -webkit-app-region: no-drag; }
+main {
+  flex: 1;
+  display: grid; grid-template-columns: minmax(360px, 1.1fr) minmax(320px, 1fr);
+  gap: 28px; padding: 32px 48px; align-content: start;
+  max-width: 1400px; width: 100%; margin: 0 auto;
+}
+.card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  padding: 24px 28px; backdrop-filter: blur(6px);
+}
+h2 { margin: 0 0 18px; font-size: 18px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+label { display: block; margin-bottom: 18px; color: var(--muted); }
+label > input, label > .row { margin-top: 6px; }
+input, select, button {
+  font: inherit; color: var(--text);
+  background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; outline: none;
+}
+input:focus, select:focus { border-color: var(--accent); }
+input { width: 100%; user-select: text; }
+input[type=range] { padding: 0; accent-color: var(--accent); }
+button { cursor: pointer; background: rgba(143, 107, 255, 0.18); white-space: nowrap; }
+button:hover:not(:disabled) { background: rgba(143, 107, 255, 0.32); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.ghost { background: transparent; }
+button.ghost:hover { background: rgba(255, 255, 255, 0.08); }
+button.wide { width: 100%; }
+.row { display: flex; gap: 10px; align-items: center; }
+.row input { flex: 1; }
+.hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; display: block; }
+.skin { display: flex; gap: 24px; align-items: center; }
+#skin-canvas {
+  width: 160px; height: 320px; image-rendering: pixelated;
+  background: rgba(0, 0, 0, 0.25); border-radius: 12px; border: 1px solid var(--line);
+}
+.skin-actions { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+footer {
+  display: flex; align-items: center; gap: 28px;
+  padding: 24px 48px 36px; max-width: 1400px; width: 100%; margin: 0 auto;
+}
+.status { flex: 1; }
+#status-text { margin-bottom: 8px; color: var(--muted); }
+.bar { height: 8px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden; }
+#bar-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.2s; }
+.play {
+  min-width: 260px; padding: 20px 40px; font-size: 24px; font-weight: 800; letter-spacing: 0.2em;
+  background: linear-gradient(90deg, var(--accent), #6a4bdc); border: none; border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(143, 107, 255, 0.35);
+}
+.play:hover:not(:disabled) { filter: brightness(1.12); background: linear-gradient(90deg, var(--accent), #6a4bdc); }
+.toast {
+  position: fixed; left: 50%; bottom: 140px; transform: translateX(-50%);
+  max-width: 70%; padding: 14px 20px; border-radius: 12px; white-space: pre-wrap;
+  background: #2a1d2a; border: 1px solid var(--danger); color: var(--text);
+  user-select: text;
+}
+.toast.ok { background: #18282a; border-color: var(--accent-2); }
+.hidden { display: none; }
+@media (max-width: 1000px) { main { grid-template-columns: 1fr; overflow-y: auto; } }
