@@ -13,8 +13,9 @@ function pngSize(buf) {
 function checkSkin(buf) {
   const s = pngSize(buf);
   if (!s) throw new Error('Это не PNG-файл');
-  if (!(s.width === 64 && (s.height === 64 || s.height === 32)))
-    throw new Error(`Скин должен быть 64×64 (или старый 64×32), а этот ${s.width}×${s.height}`);
+  if (!(s.width === 64 && s.height === 64))
+    throw new Error(`Скин должен быть 64×64, а этот ${s.width}×${s.height}`);
+  if (buf.length > 32 * 1024) throw new Error('Файл скина слишком большой (больше 32 КБ)');
 }
 
 async function save(gameDir, buf, model) {
