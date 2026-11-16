@@ -5,6 +5,7 @@ const path = require('path');
 const pack = require('./pack');
 const game = require('./game');
 const skin = require('./skin');
+const server = require('./server');
 
 // where the pack's current version is described (GitHub Releases, "latest" release)
 const MANIFEST_URL = process.env.GENERATION_MANIFEST
@@ -12,7 +13,7 @@ const MANIFEST_URL = process.env.GENERATION_MANIFEST
 
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 const defaults = () => ({
-  root: path.join(app.getPath('documents'), 'The Last New Year'),
+  root: process.env.GENERATION_ROOT || path.join(app.getPath('documents'), 'The Last New Year'),   // env: development aid
   memoryMB: Math.min(8192, Math.max(4096, Math.floor((game.totalMemoryMB() - 4096) / 512) * 512)),
   nickname: '',
 });
@@ -111,20 +112,33 @@ ipcMain.handle('pack:play', async () => {
   }
 });
 
-ipcMain.handle('skin:get', () => skin.current(path.join(loadSettings().root, 'game')));
-ipcMain.handle('skin:file', async (_e, model) => {
+const gameDir = () => path.join(loadSettings().root, 'game');
+ipcMain.handle('skin:get', () => skin.current(gameDir(), path.join(loadSettings().root, 'runtime')));
+ipcMain.handle('skin:file', async () => {
   const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Скин', extensions: ['png'] }] });
   if (r.canceled) return { ok: false };
   try {
-    await skin.fromFile(path.join(loadSettings().root, 'game'), r.filePaths[0], model);
+    await skin.fromFile(gameDir(), r.filePaths[0]);
     return { ok: true };
   } catch (e) { return { ok: false, error: e.message }; }
 });
 ipcMain.handle('skin:nick', async (_e, nick) => {
   try {
-    const model = await skin.fromNickname(path.join(loadSettings().root, 'game'), nick);
-    return { ok: true, model };
+    return { ok: true, ...(await skin.fromNickname(gameDir(), nick)) };
   } catch (e) { return { ok: false, error: e.message }; }
+});
+ipcMain.handle('skin:model', (_e, model) => skin.setModel(gameDir(), model));
+ipcMain.handle('skin:cape', (_e, id) => skin.setCape(gameDir(), id));
+
+// the pack's server, when the manifest names one: online or not, players, and this player's class and life
+ipcMain.handle('server:status', async () => {
+  let manifest;
+  try { manifest = await pack.fetchManifest(MANIFEST_URL); } catch {}
+  if (!manifest?.server) return { configured: false };
+  const status = await server.ping(manifest.server);
+  const nick = loadSettings().nickname;
+  const player = status.online && nick ? await server.playerInfo(manifest.server, manifest.statusApi, nick) : null;
+  return { configured: true, address: manifest.server, ...status, player };
 });
 
 ipcMain.handle('app:quit', () => app.quit());

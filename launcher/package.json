@@ -1,7 +1,7 @@
 {
   "name": "generation-launcher",
   "productName": "The Last New Year",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Launcher for The Last New Year (GENERATION modpack)",
   "main": "src/main.js",
   "private": true,
@@ -19,7 +19,9 @@
   },
   "dependencies": {
     "@xmcl/core": "^2.16.3",
-    "adm-zip": "^0.6.1"
+    "adm-zip": "^0.6.1",
+    "skinview3d": "^3.4.2",
+    "three": "^0.156.1"
   },
   "build": {
     "appId": "com.thelastnewyear.launcher",

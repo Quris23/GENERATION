@@ -138,6 +138,10 @@ manifest = {
     "files": files,
     "archives": archives,
 }
+# the server's address ("host" or "host:port"), shown live in the launcher: put it in pack/server.txt once there is one
+server_file = Path(__file__).resolve().parent / "server.txt"
+if server_file.exists() and server_file.read_text().strip():
+    manifest["server"] = server_file.read_text().strip()
 (OUT / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
 
 n_cf = sum(1 for f in files if f["source"] == "curseforge")

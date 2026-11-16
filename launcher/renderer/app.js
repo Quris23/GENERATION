@@ -1,6 +1,16 @@
+import { createPreview } from './skin3d.js';
+
 const $ = id => document.getElementById(id);
 let settings;
 let statusInfo = null;
+let look = null;          // skin, model, cape from the launcher's files
+let playerClass = null;   // the player's class on the server (cape id), when known
+
+// the classes of SpellClasses and their capes (renderer/capes/<id>.png)
+const CLASSES = {
+  ice: 'Лич', fire: 'Горящая Душа', lightning: 'Исследователь Хекстека', nature: 'Друид',
+  ender: 'Эндер', blood: 'Вампир', holy: 'Священник', aqua: 'Атлант',
+};
 
 function toast(text, ok = false) {
   const t = $('toast');
@@ -15,50 +25,105 @@ function setStatus(text, fraction) {
   if (fraction !== undefined) $('bar-fill').style.width = `${Math.round(fraction * 100)}%`;
 }
 
-// ---- skin preview: front view of a 64x64 (or old 64x32) skin, 10x scale -----------------------------------------------
-function drawSkin(dataUrl, model) {
-  const c = $('skin-canvas');
-  const g = c.getContext('2d');
-  g.clearRect(0, 0, c.width, c.height);
-  g.imageSmoothingEnabled = false;
-  if (!dataUrl) {
-    g.fillStyle = 'rgba(255,255,255,0.08)';
-    g.fillRect(40, 0, 80, 80); g.fillRect(40, 80, 80, 120); g.fillRect(0, 80, 40, 120); g.fillRect(120, 80, 40, 120);
-    g.fillRect(40, 200, 40, 120); g.fillRect(80, 200, 40, 120);
-    return;
-  }
-  const img = new Image();
-  img.onload = () => {
-    const S = 10;
-    const old = img.height === 32;
-    const aw = model === 'slim' ? 3 : 4;
-    const part = (sx, sy, w, h, dx, dy, mirror = false) => {
-      g.save();
-      if (mirror) { g.translate(dx * S + w * S, dy * S); g.scale(-1, 1); g.drawImage(img, sx, sy, w, h, 0, 0, w * S, h * S); }
-      else g.drawImage(img, sx, sy, w, h, dx * S, dy * S, w * S, h * S);
-      g.restore();
-    };
-    const ax = 4 - aw; // slim arms sit closer to the body
-    part(8, 8, 8, 8, 4, 0);                       // head
-    part(20, 20, 8, 12, 4, 8);                    // body
-    part(44, 20, aw, 12, ax, 8);                  // right arm (viewer's left)
-    if (old) part(44, 20, aw, 12, 12, 8, true); else part(36, 52, aw, 12, 12, 8);   // left arm
-    part(4, 20, 4, 12, 4, 20);                    // right leg
-    if (old) part(4, 20, 4, 12, 8, 20, true); else part(20, 52, 4, 12, 8, 20);      // left leg
-    part(40, 8, 8, 8, 4, 0);                      // hat layer
-    if (!old) {
-      part(20, 36, 8, 12, 4, 8);                  // jacket
-      part(44, 36, aw, 12, ax, 8); part(52, 52, aw, 12, 12, 8);   // sleeves
-      part(4, 36, 4, 12, 4, 20); part(4, 52, 4, 12, 8, 20);       // trousers
-    }
-  };
-  img.src = dataUrl;
+// ---- skin, model, cape --------------------------------------------------------------------------------------------------
+const preview = createPreview($('skin-3d'));
+function sizePreview() {
+  const stage = $('skin-3d').parentElement;
+  preview.resize(stage.clientWidth, Math.max(320, stage.clientHeight - 90));
+}
+window.addEventListener('resize', sizePreview);
+
+async function refreshLook() {
+  look = await gen.skin();
+  $('skin-model').textContent = look.model === 'slim' ? 'Руки: тонкие' : 'Руки: обычные';
+  await preview.show({ skin: look.skin || 'default-skin.png', model: look.model, cape: look.capeUrl });
+  renderCapes();
 }
 
-async function refreshSkin() {
-  const s = await gen.skin();
-  drawSkin(s?.dataUrl, s?.model);
-  if (s?.model) $('skin-model').value = s.model;
+// the face of a cape, drawn from its texture, as a small tile
+function capeThumb(src) {
+  const c = document.createElement('canvas');
+  c.width = 10; c.height = 16;
+  if (src) {
+    const img = new Image();
+    img.onload = () => c.getContext('2d').drawImage(img, 1, 1, 10, 16, 0, 0, 10, 16);
+    img.src = src;
+  }
+  return c;
+}
+
+function renderCapes() {
+  const box = $('capes');
+  box.replaceChildren();
+  const tile = (id, name, src, lockedReason) => {
+    const b = document.createElement('button');
+    b.className = 'cape' + (look.cape === id ? ' selected' : '') + (lockedReason ? ' locked' : '');
+    b.title = lockedReason || name;
+    b.append(capeThumb(src));
+    const label = document.createElement('span');
+    label.textContent = name;
+    b.append(label);
+    b.addEventListener('click', async () => {
+      if (lockedReason) return toast(lockedReason);
+      await gen.setCape(id);
+      refreshLook();
+    });
+    box.append(b);
+  };
+  tile('none', 'Без плаща', null);
+  for (const [id, name] of Object.entries(CLASSES)) {
+    const reason = playerClass === id ? null
+      : playerClass ? `Только для класса «${name}»` : `Откроется, когда выберете класс «${name}» на сервере`;
+    tile(id, name, `capes/${id}.png`, reason);
+  }
+  if (look.licensedCape) tile('licensed', 'С лицензии', look.licensedCape);
+  $('capes-hint').textContent = playerClass
+    ? `Доступен плащ вашего класса${look.licensedCape ? ' и плащ с лицензии' : ''}.`
+    : 'Классовый плащ откроется после выбора класса на сервере.' + (look.licensedCape ? '' : ' Плащ с лицензии подтянется вместе со скином по нику.');
+}
+
+// ---- server -------------------------------------------------------------------------------------------------------------
+const LIFE = {
+  alive: ['Жив', 'ok'],
+  dead: ['Ждёт воскрешения у Алтаря', 'bad'],
+  revived: ['Воскрешён — оживёт при входе', 'warn'],
+  new: ['Ещё не заходил на сервер', ''],
+};
+
+async function refreshServer() {
+  let s;
+  try { s = await gen.serverStatus(); } catch { s = { configured: false }; }
+  const dot = $('server-dot');
+  if (!s.configured) {
+    dot.className = 'dot';
+    $('server-state').textContent = 'Сервер скоро появится';
+    $('server-players').textContent = '';
+    $('server-hint').textContent = 'Здесь будет его статус, онлайн и состояние вашего персонажа.';
+  } else if (!s.online) {
+    dot.className = 'dot bad';
+    $('server-state').textContent = 'Оффлайн';
+    $('server-players').textContent = '';
+    $('server-hint').textContent = s.address;
+  } else {
+    dot.className = 'dot ok';
+    $('server-state').textContent = 'Онлайн';
+    $('server-players').textContent = `${s.players} / ${s.max} игроков`;
+    $('server-hint').textContent = s.address;
+  }
+  const life = s.player && LIFE[s.player.state];
+  $('life-state').textContent = life ? life[0] : '—';
+  $('life-state').className = life ? life[1] : '';
+
+  const cls = s.player?.class && CLASSES[s.player.class] ? s.player.class : null;
+  if (s.player) {      // the server answered for this player: what it says is the truth
+    playerClass = cls;
+    if (look && CLASSES[look.cape] && look.cape !== cls) {   // a class cape that is no longer theirs
+      await gen.setCape('none');
+      return refreshLook();
+    }
+  }
+  $('player-class').textContent = playerClass ? CLASSES[playerClass] : (s.player ? 'не выбран' : '—');
+  if (look) renderCapes();
 }
 
 // ---- settings -----------------------------------------------------------------------------------------------------------
@@ -81,8 +146,11 @@ async function init() {
   $('memory').max = max;
   $('memory').value = Math.min(settings.memoryMB, max);
   showMemory();
-  refreshSkin();
+  sizePreview();
+  await refreshLook();
   checkStatus();
+  refreshServer();
+  setInterval(refreshServer, 30000);
 }
 
 async function checkStatus() {
@@ -102,8 +170,10 @@ async function checkStatus() {
   $('play').disabled = false;
 }
 
-$('nickname').addEventListener('change', async e => {
-  settings = await gen.setSettings({ nickname: e.target.value.trim() });
+const nickname = () => $('nickname').value.trim();
+$('nickname').addEventListener('change', async () => {
+  settings = await gen.setSettings({ nickname: nickname() });
+  refreshServer();
 });
 $('memory').addEventListener('input', showMemory);
 $('memory').addEventListener('change', async e => {
@@ -114,26 +184,29 @@ $('choose-root').addEventListener('click', async () => {
   if (!dir) return;
   settings = await gen.setSettings({ root: dir });
   $('root').value = dir;
-  refreshSkin();
+  refreshLook();
   checkStatus();
 });
 $('open-folder').addEventListener('click', () => gen.openGameFolder());
 $('quit').addEventListener('click', () => gen.quit());
 $('fullscreen').addEventListener('click', () => gen.toggleFullscreen());
 
+$('skin-model').addEventListener('click', async () => {
+  await gen.setSkinModel(look.model === 'slim' ? 'classic' : 'slim');
+  refreshLook();
+});
 $('skin-file').addEventListener('click', async () => {
-  const r = await gen.skinFromFile($('skin-model').value);
-  if (r.ok) { toast('Скин сохранён', true); refreshSkin(); }
+  const r = await gen.skinFromFile();
+  if (r.ok) { toast('Скин сохранён', true); refreshLook(); }
   else if (r.error) toast(r.error);
 });
-$('skin-model').addEventListener('change', refreshSkin);
 $('skin-from-nick').addEventListener('click', async () => {
-  const nick = $('skin-nick').value.trim();
-  if (!nick) return toast('Впишите ник игрока с лицензией');
+  const nick = nickname();
+  if (!nick) return toast('Впишите ник игрока с лицензией в поле «Никнейм»');
   $('skin-from-nick').disabled = true;
   const r = await gen.skinFromNick(nick);
   $('skin-from-nick').disabled = false;
-  if (r.ok) { toast(`Скин игрока ${nick} сохранён`, true); refreshSkin(); }
+  if (r.ok) { toast(`Скин игрока ${nick} сохранён${r.cape ? ' вместе с плащом' : ''}`, true); refreshLook(); }
   else toast(r.error);
 });
 
@@ -147,10 +220,11 @@ gen.onGameExit(code => {
   setStatus(code === 0 ? 'Игра закрыта' : `Игра завершилась с ошибкой (код ${code}). Лог: game/logs/latest.log`, 1);
   $('play').disabled = false;
   $('play').textContent = 'ИГРАТЬ';
+  refreshServer();
 });
 
 $('play').addEventListener('click', async () => {
-  settings = await gen.setSettings({ nickname: $('nickname').value.trim() });
+  settings = await gen.setSettings({ nickname: nickname() });
   $('play').disabled = true;
   const r = await gen.play();
   if (!r?.ok) {

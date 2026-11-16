@@ -2,12 +2,15 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-iQcWR2XwYPTQNBfrnmMLKoFqy3NV8hqQlWS9FcdRy4o='; img-src 'self' data: blob:; style-src 'self'">
   <title>The Last New Year</title>
   <link rel="stylesheet" href="style.css">
+  <script type="importmap">{"imports":{"three":"../node_modules/three/build/three.module.js","three/examples/jsm/":"./vendor/three-jsm/","skinview3d":"../node_modules/skinview3d/libs/skinview3d.js","skinview-utils":"../node_modules/skinview-utils/build/index.js"}}</script>
 </head>
 <body>
-  <div class="bg"></div>
+  <canvas id="bg"></canvas>
+  <div class="vignette"></div>
+
   <header>
     <img class="logo" src="logo.png" alt="The Last New Year" draggable="false">
     <div class="win-buttons">
@@ -17,44 +20,51 @@
   </header>
 
   <main>
-    <section class="card player">
-      <h2>Игрок</h2>
-      <label>Ник
-        <input id="nickname" maxlength="16" placeholder="Латиница, цифры, _" spellcheck="false">
-      </label>
-      <div class="skin">
-        <canvas id="skin-canvas" width="160" height="320"></canvas>
-        <div class="skin-actions">
-          <div class="row">
-            <button id="skin-file">Скин из файла</button>
-            <select id="skin-model" title="Модель рук">
-              <option value="classic">Широкие руки</option>
-              <option value="slim">Тонкие руки</option>
-            </select>
-          </div>
-          <div class="row">
-            <input id="skin-nick" placeholder="Ник с лицензией" spellcheck="false">
-            <button id="skin-from-nick">Взять скин</button>
-          </div>
-          <p class="hint">Скин увидят все игроки в мире.</p>
-        </div>
-      </div>
+    <section class="stage">
+      <canvas id="skin-3d"></canvas>
+      <button id="skin-model" class="ghost model-toggle" title="Нажмите, чтобы сменить модель рук"></button>
+      <p class="hint center">Потяните мышью, чтобы повернуть</p>
     </section>
 
-    <section class="card settings">
-      <h2>Настройки</h2>
-      <label>Папка игры
-        <div class="row">
-          <input id="root" readonly>
-          <button id="choose-root">Изменить</button>
-        </div>
+    <section class="card player">
+      <h2>Игрок</h2>
+      <label>Никнейм
+        <input id="nickname" maxlength="16" placeholder="Латиница, цифры, _" spellcheck="false">
       </label>
-      <label>Память для игры: <b id="memory-value"></b>
-        <input id="memory" type="range" step="512">
-        <span class="hint" id="memory-hint"></span>
-      </label>
-      <button id="open-folder" class="ghost wide">Открыть папку игры (моды, шейдеры, ресурспаки)</button>
+      <div class="row">
+        <button id="skin-from-nick" class="grow" title="Скопировать скин (и плащ) лицензионного аккаунта с этим ником">Взять скин</button>
+        <button id="skin-file" class="grow" title="PNG 64×64 или старый 64×32">Загрузить скин</button>
+      </div>
+      <div class="class-line">Класс: <b id="player-class">—</b></div>
+
+      <h3>Плащ</h3>
+      <div id="capes" class="capes"></div>
+      <p class="hint" id="capes-hint"></p>
     </section>
+
+    <div class="side">
+      <section class="card server">
+        <h2>Сервер</h2>
+        <div class="server-line"><span id="server-dot" class="dot"></span><b id="server-state">Проверка…</b><span id="server-players" class="muted"></span></div>
+        <div class="server-line"><span class="muted">Ваш персонаж:</span><b id="life-state">—</b></div>
+        <p class="hint" id="server-hint"></p>
+      </section>
+
+      <section class="card settings">
+        <h2>Настройки</h2>
+        <label>Папка игры
+          <div class="row">
+            <input id="root" readonly>
+            <button id="choose-root">Изменить</button>
+          </div>
+        </label>
+        <label>Выделенная RAM: <b id="memory-value"></b>
+          <input id="memory" type="range" step="512">
+          <span class="hint" id="memory-hint"></span>
+        </label>
+        <button id="open-folder" class="ghost wide">Открыть папку игры (моды, шейдеры, ресурспаки)</button>
+      </section>
+    </div>
   </main>
 
   <footer>
@@ -66,6 +76,7 @@
   </footer>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js"></script>
+  <script type="module" src="bg.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
