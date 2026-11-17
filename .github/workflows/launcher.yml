@@ -26,6 +26,11 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      - name: Token for the shared Tetris records (src/scores.js)
+        shell: bash
+        env:
+          TETRIS_TOKEN: ${{ secrets.TETRIS_TOKEN }}
+        run: printf '%s' "$TETRIS_TOKEN" > src/tetris-token.txt
       - run: npx electron-builder ${{ matrix.target }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'

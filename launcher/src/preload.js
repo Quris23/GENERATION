@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('gen', {
   skinFromNick: nick => ipcRenderer.invoke('skin:nick', nick),
   setSkinModel: model => ipcRenderer.invoke('skin:model', model),
   setCape: id => ipcRenderer.invoke('skin:cape', id),
+  tetrisTop: () => ipcRenderer.invoke('tetris:top'),
+  tetrisSubmit: score => ipcRenderer.invoke('tetris:submit', score),
   serverStatus: () => ipcRenderer.invoke('server:status'),
   quit: () => ipcRenderer.invoke('app:quit'),
   toggleFullscreen: () => ipcRenderer.invoke('app:fullscreen'),

@@ -269,6 +269,12 @@ footer {
 .t-stats { display: flex; flex-direction: column; gap: 6px; }
 .t-stats div { display: flex; justify-content: space-between; align-items: baseline; }
 .t-stats b { color: var(--text); font-variant-numeric: tabular-nums; font-size: 14px; }
+.t-top ol { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.t-top li { display: flex; justify-content: space-between; gap: 6px; }
+.t-top li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-top li b { color: var(--text); font-variant-numeric: tabular-nums; }
+.t-top li.me span, .t-top li.me b { color: var(--accent, #e8b94a); }
+.t-top .hint-li { font-size: 11px; }
 .t-keys { font-size: 11.5px; display: flex; flex-direction: column; gap: 5px; }
 kbd {
   display: inline-block; min-width: 18px; padding: 1px 5px; margin-right: 3px; border-radius: 4px; text-align: center;

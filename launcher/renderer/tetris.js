@@ -53,8 +53,9 @@ root.innerHTML = `
         <div><span class="muted">Счёт</span><b id="t-score">0</b></div>
         <div><span class="muted">Линии</span><b id="t-lines">0</b></div>
         <div><span class="muted">Уровень</span><b id="t-level">1</b></div>
-        <div><span class="muted">Рекорд</span><b id="t-best">0</b></div>
+        <div><span class="muted">Мой рекорд</span><b id="t-best">0</b></div>
       </div>
+      <div class="t-box t-top"><span class="muted">Лучшие</span><ol id="t-top"></ol></div>
       <div class="t-keys muted">
         <div><kbd>←</kbd><kbd>→</kbd> двигать</div>
         <div><kbd>↑</kbd> повернуть</div>
@@ -129,7 +130,28 @@ function start() {
   spawn(); showOver(); stats();
 }
 const speed = () => Math.max(70, 800 * 0.85 ** (level - 1));
-function saveBest() { if (score > best) { best = score; try { localStorage.setItem('tetris-best', String(best)); } catch {} } stats(); }
+function saveBest() {
+  if (score > best) { best = score; try { localStorage.setItem('tetris-best', String(best)); } catch {} }
+  stats();
+  if (score > 0) records(best);
+}
+
+// ---- shared records (top 3 of every player, by nickname) ----------------------------------------------------------------
+// send: this launcher's best, kept under the nickname from the Player card (the shared table keeps each nickname's best)
+async function records(send) {
+  const list = $('t-top');
+  let r, me = '';
+  try {
+    [r, { nickname: me = '' }] = await Promise.all([send ? gen.tetrisSubmit(send) : gen.tetrisTop(), gen.settings()]);
+  } catch { r = { ok: false }; }
+  const esc = t => String(t).replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`);
+  if (!r.ok) { list.innerHTML = '<li class="muted">Нет связи</li>'; return; }
+  const rows = r.top.map((e, i) => `<li class="${e.nick.toLowerCase() === me.toLowerCase() ? 'me' : ''}">` +
+    `<span>${i + 1}. ${esc(e.nick)}</span><b>${e.score}</b></li>`);
+  if (!rows.length) rows.push('<li class="muted">Пока пусто</li>');
+  if (r.noNick) rows.push('<li class="muted hint-li">Введите ник, чтобы попасть сюда</li>');
+  list.innerHTML = rows.join('');
+}
 function stats() {
   $('t-score').textContent = score; $('t-lines').textContent = lines; $('t-level').textContent = level; $('t-best').textContent = Math.max(best, score);
 }
@@ -289,5 +311,5 @@ function sync() {
 new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 window.addEventListener('resize', () => { if (!root.classList.contains('hidden')) layout(); });
 window.addEventListener('settings-toggle', () => { if (visible()) requestAnimationFrame(layout); });
-showOver(); stats(); sync();
+showOver(); stats(); sync(); records(best);
 requestAnimationFrame(frame);

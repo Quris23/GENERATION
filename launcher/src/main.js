@@ -6,6 +6,7 @@ const pack = require('./pack');
 const game = require('./game');
 const skin = require('./skin');
 const server = require('./server');
+const scores = require('./scores');
 
 // where the pack's current version is described (GitHub Releases, "latest" release)
 const MANIFEST_URL = process.env.GENERATION_MANIFEST
@@ -183,6 +184,18 @@ ipcMain.handle('skin:nick', async (_e, nick) => {
 });
 ipcMain.handle('skin:model', (_e, model) => skin.setModel(gameDir(), model));
 ipcMain.handle('skin:cape', (_e, id) => skin.setCape(gameDir(), id));
+
+// shared Tetris records (src/scores.js): the top, and this player's best under their nickname
+ipcMain.handle('tetris:top', async () => {
+  try { return { ok: true, top: await scores.list() }; } catch (e) { return { ok: false, error: e.message }; }
+});
+ipcMain.handle('tetris:submit', async (_e, score) => {
+  const nick = loadSettings().nickname;
+  try {
+    if (!/^[A-Za-z0-9_]{3,16}$/.test(nick || '')) return { ok: true, top: await scores.list(), noNick: true };
+    return { ok: true, top: await scores.submit(nick, Math.floor(Number(score) || 0)) };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
 
 // the pack's server, when the manifest names one: online or not, players, and this player's class and life
 ipcMain.handle('server:status', async () => {
