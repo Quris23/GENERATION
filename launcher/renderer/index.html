@@ -31,37 +31,39 @@
       <p class="hint center">Потяните мышью, чтобы повернуть</p>
     </section>
 
-    <section class="card player">
-      <h2>Игрок</h2>
-      <label>Никнейм
-        <input id="nickname" maxlength="16" placeholder="Латиница, цифры, _" spellcheck="false">
-      </label>
-      <div class="row">
-        <button id="skin-from-nick" class="grow" title="Скопировать скин (и плащ) лицензионного аккаунта с этим ником">Взять скин</button>
-        <button id="skin-file" class="grow" title="PNG 64×64 или старый 64×32">Загрузить скин</button>
-      </div>
-      <div class="class-line">Класс: <b id="player-class">—</b></div>
+    <!-- the middle: empty, or Tetris while the pack installs -->
+    <section id="tetris" class="card tetris hidden" aria-label="Тетрис"></section>
 
-      <h3>Плащ</h3>
-      <div id="capes" class="capes"></div>
-      <p class="hint" id="capes-hint"></p>
-    </section>
-
-    <div class="side">
+    <!-- server over player; slides into the middle when the settings open -->
+    <div id="stack" class="stack">
       <section class="card server">
-        <h2>Сервер</h2>
-        <div class="server-line"><span id="server-dot" class="dot"></span><b id="server-state">Проверка…</b><span id="server-players" class="muted"></span></div>
+        <div class="card-head">
+          <h2>Сервер</h2>
+          <div class="server-line"><span id="server-dot" class="dot"></span><b id="server-state">Проверка…</b><span id="server-players" class="muted"></span></div>
+        </div>
         <div class="server-line"><span class="muted">Ваш персонаж:</span><b id="life-state">—</b></div>
         <p class="hint" id="server-hint"></p>
       </section>
 
-      <button id="open-folder" class="ghost wide">Папка игры: моды, шейдеры, ресурспаки</button>
-    </div>
-  </main>
+      <section class="card player">
+        <h2>Игрок</h2>
+        <label>Никнейм
+          <input id="nickname" maxlength="16" placeholder="Латиница, цифры, _" spellcheck="false">
+        </label>
+        <div class="row">
+          <button id="skin-from-nick" class="grow" title="Скопировать скин (и плащ) лицензионного аккаунта с этим ником">Взять скин</button>
+          <button id="skin-file" class="grow" title="PNG 64×64 или старый 64×32">Загрузить скин</button>
+        </div>
+        <div class="class-line">Класс: <b id="player-class">—</b></div>
 
-  <!-- settings, behind the gear button -->
-  <div id="settings" class="modal hidden">
-    <section class="card dialog">
+        <h3>Плащ</h3>
+        <div id="capes" class="capes"></div>
+        <p class="hint" id="capes-hint"></p>
+      </section>
+    </div>
+
+    <!-- settings, behind the gear button: slides in on the right -->
+    <section id="settings" class="card settings hidden">
       <div class="dialog-head">
         <h2>Настройки</h2>
         <button id="close-settings" class="icon-button small" title="Закрыть">✕</button>
@@ -70,6 +72,7 @@
         <div class="row">
           <input id="root" readonly>
           <button id="choose-root">Изменить</button>
+          <button id="open-folder" title="Моды, шейдеры, ресурспаки">Открыть</button>
         </div>
       </label>
       <label>Выделенная RAM: <b id="memory-value"></b>
@@ -87,7 +90,7 @@
         <input id="game-fullscreen" type="checkbox" class="switch">
       </label>
     </section>
-  </div>
+  </main>
 
   <audio id="music" src="music/end.m4a" loop preload="auto"></audio>
 
@@ -103,5 +106,6 @@
   <script type="module" src="bg.js"></script>
   <script type="module" src="app.js"></script>
   <script type="module" src="fx.js"></script>
+  <script type="module" src="tetris.js"></script>
 </body>
 </html>

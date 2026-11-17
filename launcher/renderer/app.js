@@ -245,10 +245,34 @@ function showVolumes() {
 function startMusic() {
   if (settings.musicVolume > 0) music.play().catch(() => {});
 }
-$('open-settings').addEventListener('click', () => $('settings').classList.remove('hidden'));
-$('close-settings').addEventListener('click', () => $('settings').classList.add('hidden'));
-$('settings').addEventListener('click', e => { if (e.target === $('settings')) $('settings').classList.add('hidden'); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') $('settings').classList.add('hidden'); });
+// the settings slide in on the right while server + player glide into the middle (and Tetris, if it was there, steps
+// aside); closing plays it backwards
+const EASE = 'cubic-bezier(.2,.8,.3,1)';
+let settingsAnim = null;
+function setSettingsOpen(open) {
+  if (document.body.classList.contains('settings-open') === open) return;
+  const stack = $('stack'), panel = $('settings');
+  const before = stack.getBoundingClientRect();
+  settingsAnim?.finish();
+  if (open) {
+    panel.classList.remove('hidden');
+    document.body.classList.add('settings-open');
+    panel.animate([{ transform: 'translateX(70px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: EASE });
+  } else {
+    document.body.classList.remove('settings-open');
+    // the panel stays in place (out of the grid flow) while it fades out to the right
+    const r = panel.getBoundingClientRect();
+    Object.assign(panel.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, margin: 0 });
+    settingsAnim = panel.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateX(70px)', opacity: 0 }], { duration: 300, easing: 'ease-in' });
+    settingsAnim.onfinish = () => { panel.classList.add('hidden'); panel.removeAttribute('style'); settingsAnim = null; };
+  }
+  const after = stack.getBoundingClientRect();
+  stack.animate([{ transform: `translateX(${before.left - after.left}px)` }, { transform: 'none' }], { duration: 460, easing: EASE });
+  window.dispatchEvent(new Event('settings-toggle'));
+}
+$('open-settings').addEventListener('click', () => setSettingsOpen(!document.body.classList.contains('settings-open')));
+$('close-settings').addEventListener('click', () => setSettingsOpen(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') setSettingsOpen(false); });
 for (const [input, key] of [['intro-volume', 'introVolume'], ['music-volume', 'musicVolume']]) {
   $(input).addEventListener('input', e => {
     settings[key] = Number(e.target.value) / 100;
@@ -293,7 +317,7 @@ function setBusy(on, idleText) {
   b.classList.toggle('busy', on);
   b.style.setProperty('--p', '0%');
   if (on) { busyLabel = BUSY_LABEL[b.textContent] || 'ЗАПУСК'; b.textContent = busyLabel; b.disabled = true; b.classList.remove('long'); }
-  else { busyLabel = null; if (idleText) b.textContent = idleText; }
+  else { busyLabel = null; if (idleText) b.textContent = idleText; document.body.classList.remove('installing'); }
 }
 
 gen.onProgress(({ stage, done, total }) => {
@@ -302,6 +326,7 @@ gen.onProgress(({ stage, done, total }) => {
   const size = big ? ` — ${mb(done)} из ${mb(total)} МБ` : '';
   setStatus(`${stage}${size}`, f);
   if (!busyLabel) return;               // not installing (e.g. a straggler after an error): never paint over the status
+  if (big) document.body.classList.add('installing');   // a real download: Tetris comes out for the wait
   if (busyLabel) {
     const pct = Math.max(0, Math.min(100, Math.round(f * 100)));
     $('play').style.setProperty('--p', `${big ? pct : 0}%`);

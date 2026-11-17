@@ -77,11 +77,12 @@ function createWindow() {
   // development aid: GENERATION_SCREENSHOT=<png> renders the window off screen, saves it and quits
   const shot = process.env.GENERATION_SCREENSHOT;
   if (shot) {
-    win.hide();
+    win.setOpacity(0);            // invisible but on screen: a hidden window stops repainting and the capture goes stale
+    win.showInactive();
     win.webContents.setBackgroundThrottling(false);
     // GENERATION_EVAL=<js>: runs in the page shortly before the capture, to see a state (e.g. the busy button)
     win.webContents.once('did-finish-load', () => setTimeout(async () => {
-      if (process.env.GENERATION_EVAL) await win.webContents.executeJavaScript(process.env.GENERATION_EVAL);
+      if (process.env.GENERATION_EVAL) console.log('EVAL', JSON.stringify(await win.webContents.executeJavaScript(process.env.GENERATION_EVAL).catch(e => String(e))));
       win.webContents.invalidate();     // a hidden window repaints only when asked
       await new Promise(r => setTimeout(r, 900));
       await fsp.writeFile(shot, (await win.webContents.capturePage()).toPNG());
