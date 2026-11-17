@@ -52,8 +52,12 @@ function capeThumb(src) {
   return c;
 }
 
+let capesKey = '';
 function renderCapes() {
   const box = $('capes');
+  const key = [look.cape, playerClass, !!look.licensedCape].join('|');
+  if (key === capesKey && box.childElementCount) return;   // unchanged: leave the cycling cell's animation alone
+  capesKey = key;
   box.replaceChildren();
   const tile = (id, name, src, lockedReason) => {
     const b = document.createElement('button');
@@ -71,13 +75,34 @@ function renderCapes() {
     box.append(b);
   };
   tile('none', 'Без плаща', null);
-  for (const [id, name] of Object.entries(CLASSES)) {
-    const reason = playerClass === id ? null
-      : playerClass ? `Только для класса «${name}»` : `Откроется, когда выберете класс «${name}» на сервере`;
-    tile(id, name, `capes/${id}.png`, reason);
+
+  // one cell for the class cape: the player's own once their class is known; until then it shows the eight in turn,
+  // each fading into the next every two seconds
+  const ownClass = playerClass || (CLASSES[look.cape] ? look.cape : null);
+  if (ownClass) {
+    tile(ownClass, `Плащ: ${CLASSES[ownClass]}`, `capes/${ownClass}.png`, null);
+  } else {
+    const b = document.createElement('button');
+    b.className = 'cape locked cycling';
+    b.title = 'Откроется, когда выберете класс на сервере';
+    const stack = document.createElement('div');
+    stack.className = 'cape-stack';
+    const names = document.createElement('div');
+    names.className = 'cape-names';
+    Object.entries(CLASSES).forEach(([id, name], i) => {
+      const c = capeThumb(`capes/${id}.png`);
+      const n = document.createElement('span');
+      for (const el of [c, n]) el.style.setProperty('--i', i);
+      n.textContent = name;
+      stack.append(c);
+      names.append(n);
+    });
+    b.append(stack, names);
+    b.addEventListener('click', () => toast('Классовый плащ откроется, когда вы выберете класс на сервере'));
+    box.append(b);
   }
   if (look.licensedCape) tile('licensed', 'С лицензии', look.licensedCape);
-  $('capes-hint').textContent = playerClass
+  $('capes-hint').textContent = ownClass
     ? `Доступен плащ вашего класса${look.licensedCape ? ' и плащ с лицензии' : ''}.`
     : 'Классовый плащ откроется после выбора класса на сервере.' + (look.licensedCape ? '' : ' Плащ с лицензии подтянется вместе со скином по нику.');
 }
@@ -256,28 +281,49 @@ $('skin-from-nick').addEventListener('click', async () => {
 });
 
 const mb = n => (n / 1048576).toFixed(0);
+// the big button while it works: its name changes (УСТАНОВКА / ОБНОВЛЕНИЕ / ЗАПУСК), it fills with the progress and
+// its stripes keep moving, so it never looks stuck or clickable
+const BUSY_LABEL = { 'УСТАНОВИТЬ': 'УСТАНОВКА', 'ОБНОВИТЬ': 'ОБНОВЛЕНИЕ', 'ИГРАТЬ': 'ЗАПУСК' };
+let busyLabel = null;
+function setBusy(on, idleText) {
+  const b = $('play');
+  b.classList.toggle('busy', on);
+  b.style.setProperty('--p', '0%');
+  if (on) { busyLabel = BUSY_LABEL[b.textContent] || 'ЗАПУСК'; b.textContent = busyLabel; b.disabled = true; }
+  else { busyLabel = null; if (idleText) b.textContent = idleText; }
+}
+
 gen.onProgress(({ stage, done, total }) => {
   const f = total ? done / total : 0;
-  const size = total > 1048576 ? ` — ${mb(done)} из ${mb(total)} МБ` : '';
+  const big = total > 1048576;
+  const size = big ? ` — ${mb(done)} из ${mb(total)} МБ` : '';
   setStatus(`${stage}${size}`, f);
+  if (busyLabel) {
+    const pct = Math.max(0, Math.min(100, Math.round(f * 100)));
+    $('play').style.setProperty('--p', `${big ? pct : 0}%`);
+    $('play').textContent = big ? `${busyLabel} ${pct}%` : busyLabel;
+  }
 });
 gen.onGameExit(code => {
   setStatus(code === 0 ? 'Игра закрыта' : `Игра завершилась с ошибкой (код ${code}). Лог: game/logs/latest.log`, 1);
+  setBusy(false, 'ИГРАТЬ');
   $('play').disabled = false;
-  $('play').textContent = 'ИГРАТЬ';
   startMusic();
   refreshServer();
 });
 
 $('play').addEventListener('click', async () => {
   settings = await gen.setSettings({ nickname: nickname() });
-  $('play').disabled = true;
+  const idle = $('play').textContent;
+  setBusy(true);
   const r = await gen.play();
   if (!r?.ok) {
     toast(r?.error || 'Не удалось запустить');
+    setBusy(false, idle);
     $('play').disabled = false;
     setStatus('Ошибка', 0);
   } else {
+    setBusy(false, 'ЗАПУЩЕНО');
     setStatus('Игра запущена', 1);
     music.pause();   // the game has its own music
   }

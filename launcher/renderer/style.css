@@ -137,6 +137,19 @@ button.wide { width: 100%; }
   background: rgba(255, 255, 255, 0.06); border-radius: 3px;
 }
 .cape span { font-size: 10px; line-height: 1.15; color: var(--muted); text-align: center; }
+/* the cell that shows the class capes in turn: 8 capes × 2 s = a 16 s loop, each fading in as the previous fades out */
+.cape-stack { position: relative; width: 22px; height: 35px; }
+.cape-stack canvas { position: absolute; inset: 0; opacity: 0; animation: cape-cycle 16s infinite; animation-delay: calc(var(--i) * 2s); }
+.cape-names { position: relative; width: 100%; height: 24px; }
+.cape-names span { position: absolute; inset: 0; opacity: 0; animation: cape-cycle 16s infinite; animation-delay: calc(var(--i) * 2s); }
+@keyframes cape-cycle {
+  0% { opacity: 0; }
+  4% { opacity: 1; }
+  12.5% { opacity: 1; }
+  16.5% { opacity: 0; }
+  100% { opacity: 0; }
+}
+.cape.cycling { opacity: 0.8; }
 .cape.selected { border-color: var(--accent); background: rgba(244, 181, 43, 0.18); }
 .cape.selected span { color: var(--text); }
 .cape.locked { opacity: 0.55; }
@@ -176,6 +189,24 @@ footer {
   filter: brightness(1.1); background: linear-gradient(180deg, #ffd85a, #e99a17); border: none;
   box-shadow: 0 10px 34px rgba(244, 181, 43, 0.45), 0 0 40px rgba(196, 108, 255, 0.55), inset 0 -4px 0 rgba(120, 50, 0, 0.45);
   animation: none; transform: translateY(-2px);
+}
+
+/* the big button at work: filled with the progress (gold), violet moving stripes behind it, a breathing glow */
+.play.busy, .play.busy:disabled {
+  opacity: 1; cursor: progress; color: #fff; letter-spacing: 0.14em; font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgba(20, 0, 40, 0.85);
+  background:
+    linear-gradient(90deg, rgba(244, 181, 43, 0.95) var(--p, 0%), rgba(244, 181, 43, 0) var(--p, 0%)),
+    repeating-linear-gradient(115deg, #3b1c5e 0 14px, #52287f 14px 28px);
+  background-size: 100% 100%, 56px 100%;
+  box-shadow: 0 10px 30px rgba(196, 108, 255, 0.4), inset 0 -4px 0 rgba(20, 0, 40, 0.55);
+  animation: stripes 1s linear infinite, breathe 2.2s ease-in-out infinite;
+  transform: none;
+}
+.play.busy::after { animation-duration: 2s; animation-iteration-count: infinite; }
+@keyframes stripes { to { background-position: 0 0, 56px 0; } }
+@keyframes breathe {
+  50% { box-shadow: 0 10px 44px rgba(196, 108, 255, 0.75), inset 0 -4px 0 rgba(20, 0, 40, 0.55); }
 }
 
 /* settings dialog */

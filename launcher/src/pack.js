@@ -30,36 +30,62 @@ async function fileMatches(p, sha1) {
   return (await exists(p)) && (await sha1File(p)) === sha1;
 }
 
-// download to a temp file, check sha1, then move into place
+// A connection that stops delivering for this long is dropped and the download goes on from where it stopped.
+const STALL_MS = 20000;
+const ATTEMPTS = 6;
+
+// download to a temp file, check sha1, then move into place. Survives stalled and dropped connections: the part
+// already on disk is kept and asked for again with a Range request (a server that ignores it means starting over).
 async function download(url, dest, sha1, onBytes) {
   await fsp.mkdir(path.dirname(dest), { recursive: true });
   const tmp = dest + '.part';
+  await fsp.rm(tmp, { force: true });
+  let have = 0;                       // bytes of tmp already written (and already reported through onBytes)
+  let hash = crypto.createHash('sha1');
+  const startOver = () => { if (have) onBytes?.(-have); have = 0; hash = crypto.createHash('sha1'); };
+
   for (let attempt = 1; ; attempt++) {
+    const ctl = new AbortController();
+    let timer;
+    const arm = () => { clearTimeout(timer); timer = setTimeout(() => ctl.abort(), STALL_MS); };
+    let out;
     try {
-      const res = await fetch(url, { redirect: 'follow' });
+      arm();
+      const res = await fetch(url, { redirect: 'follow', signal: ctl.signal, headers: have ? { Range: `bytes=${have}-` } : {} });
+      if (res.status === 416) { startOver(); throw new Error('range not satisfiable'); }
       if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-      const h = crypto.createHash('sha1');
-      const out = fs.createWriteStream(tmp);
+      if (have && res.status !== 206) startOver();   // the server sent the whole file again
+      out = fs.createWriteStream(tmp, { flags: have ? 'a' : 'w' });
       for await (const chunk of res.body) {
-        h.update(chunk);
+        arm();
+        hash.update(chunk);
+        have += chunk.length;
         if (!out.write(chunk)) await new Promise(r => out.once('drain', r));
         onBytes?.(chunk.length);
       }
+      clearTimeout(timer);
       await new Promise((r, j) => out.end(e => (e ? j(e) : r())));
-      const got = h.digest('hex');
-      if (sha1 && got !== sha1) throw new Error(`checksum mismatch for ${path.basename(dest)}`);
+      out = null;
+      if (sha1 && hash.digest('hex') !== sha1) {
+        startOver();
+        throw new Error(`checksum mismatch for ${path.basename(dest)}`);
+      }
       await fsp.rename(tmp, dest);
       return;
     } catch (e) {
-      await fsp.rm(tmp, { force: true });
-      if (attempt >= 3) throw e;
-      await new Promise(r => setTimeout(r, 1000 * attempt));
+      clearTimeout(timer);
+      if (out) await new Promise(r => out.end(r));
+      if (attempt >= ATTEMPTS) {
+        await fsp.rm(tmp, { force: true });
+        throw new Error(`Не удалось скачать ${path.basename(dest)} (проверьте интернет): ${ctl.signal.aborted ? 'соединение зависло' : e.message}`);
+      }
+      await new Promise(r => setTimeout(r, Math.min(1000 * attempt, 5000)));
     }
   }
 }
 
 async function fetchManifest(url) {
-  const res = await fetch(url, { redirect: 'follow', cache: 'no-store' });
+  const res = await fetch(url, { redirect: 'follow', cache: 'no-store', signal: AbortSignal.timeout(30000) });
   if (!res.ok) throw new Error(`Не удалось получить описание сборки (HTTP ${res.status})`);
   return res.json();
 }

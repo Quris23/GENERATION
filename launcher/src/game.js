@@ -22,7 +22,7 @@ const javaPlatform = isMac ? (process.arch === 'arm64' ? 'mac-os-arm64' : 'mac-o
   : isWin ? (process.arch === 'arm64' ? 'windows-arm64' : 'windows-x64') : 'linux';
 
 async function json(url) {
-  const r = await fetch(url);
+  const r = await fetch(url, { signal: AbortSignal.timeout(30000) });
   if (!r.ok) throw new Error(`HTTP ${r.status}: ${url}`);
   return r.json();
 }
