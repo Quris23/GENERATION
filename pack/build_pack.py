@@ -78,7 +78,9 @@ for jar in sorted((INST / "mods").glob("*.jar")):
     data = jar.read_bytes()
     entry = {"path": f"mods/{jar.name}", "sha1": sha1(data), "size": len(data)}
     f = cf.get(jar.name)
-    if f and f.get("downloadUrl"):
+    # CurseForge only when our jar is byte for byte the one it serves (type 1 = sha1); a jar we patched goes up as ours
+    cf_sha1 = [h["value"] for h in (f or {}).get("hashes", []) if h.get("type") == 1]
+    if f and f.get("downloadUrl") and entry["sha1"] in cf_sha1:
         entry["url"] = f["downloadUrl"]  # CurseForge CDN
         entry["source"] = "curseforge"
     else:
