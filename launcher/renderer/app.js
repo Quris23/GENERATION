@@ -234,13 +234,15 @@ $('win-min').addEventListener('click', () => gen.minimize());
 $('win-full').addEventListener('click', () => gen.toggleFullscreen());
 setupWindow();
 
+// the track itself is loud: at any slider position it plays at half of it
+const MUSIC_GAIN = 0.5;
 // ---- settings dialog, volumes, music -------------------------------------------------------------------------------------
 const music = $('music');
 const percent = v => `${Math.round(v * 100)}%`;
 function showVolumes() {
   $('intro-value').textContent = percent(settings.introVolume);
   $('music-value').textContent = percent(settings.musicVolume);
-  music.volume = settings.musicVolume;
+  music.volume = settings.musicVolume * MUSIC_GAIN;
 }
 function startMusic() {
   if (settings.musicVolume > 0) music.play().catch(() => {});
