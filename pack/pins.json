@@ -1,0 +1,7 @@
+[
+  {
+    "path": "config/DistantHorizons.toml",
+    "why": "no chat warnings about Alex's Caves, Chunky and the G1 garbage collector",
+    "set": { "showModCompatibilityWarningsOnStartup": "false", "showGarbageCollectorWarning": "false" }
+  }
+]

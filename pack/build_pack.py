@@ -149,6 +149,11 @@ manifest = {
 server_file = Path(__file__).resolve().parent / "server.txt"
 if server_file.exists() and server_file.read_text().strip():
     manifest["server"] = server_file.read_text().strip()
+# pinned options: single "key = value" lines kept in the player's own files (the ones written only once, see
+# is_default), so a setting the pack needs reaches everyone without resetting the rest of their preferences
+pins_file = Path(__file__).resolve().parent / "pins.json"
+if pins_file.exists():
+    manifest["pins"] = json.loads(pins_file.read_text())
 (OUT / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
 
 n_cf = sum(1 for f in files if f["source"] == "curseforge")

@@ -84,6 +84,19 @@ async function download(url, dest, sha1, onBytes) {
   }
 }
 
+// "key = value" lines (TOML, Tan's txt): the value is replaced in place, keeping the indentation; a missing file or key
+// is left as it is (a fresh install gets the pack's own file, which already has the value)
+async function applyPin(file, set) {
+  let text;
+  try { text = await fsp.readFile(file, 'utf8'); } catch { return; }
+  let out = text;
+  for (const [key, value] of Object.entries(set)) {
+    const esc = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(`^([ \\t]*)${esc}([ \\t]*)=[^\\n]*$`, 'm'), `$1${key}$2= ${value}`);
+  }
+  if (out !== text) await fsp.writeFile(file, out);
+}
+
 async function fetchManifest(url) {
   const res = await fetch(url, { redirect: 'follow', cache: 'no-store', signal: AbortSignal.timeout(30000) });
   if (!res.ok) throw new Error(`Не удалось получить описание сборки (HTTP ${res.status})`);
@@ -144,6 +157,9 @@ async function sync(gameDir, manifest, progress = () => {}) {
     }
     await fsp.rm(zipPath, { force: true });
   }
+
+  // pinned options: set single "key = value" lines in the player's own files, leave everything else in them alone
+  for (const pin of manifest.pins || []) await applyPin(path.join(gameDir, pin.path), pin.set);
 
   // 3. remove what an earlier version installed and this one no longer has
   progress('Уборка', 0, 1);
