@@ -115,12 +115,20 @@ ipcMain.handle('pack:status', async () => {
   let installed = null;
   try { installed = JSON.parse(await fsp.readFile(path.join(root, 'game/.generation/installed.json'), 'utf8')).version; }
   catch {}
-  return { remote: manifest.version, installed, memory: manifest.memory };
+  // no record of a finished install, but files are already there: an install that was cut short (it resumes, skipping
+  // every file that is already right)
+  let partial = false;
+  if (!installed) {
+    for (const d of ['game/mods', 'runtime/versions']) {
+      try { if ((await fsp.readdir(path.join(root, d))).length) partial = true; } catch {}
+    }
+  }
+  return { remote: manifest.version, installed, partial, memory: manifest.memory };
 });
 
 // install / update everything, then start the game
 ipcMain.handle('pack:play', async () => {
-  if (busy) return;
+  if (busy) return { ok: false, busy: true };
   busy = true;
   const s = loadSettings();
   const progress = (stage, done, total) => send('progress', { stage, done, total });

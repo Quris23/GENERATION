@@ -32,7 +32,7 @@ async function fileMatches(p, sha1) {
 
 // A connection that stops delivering for this long is dropped and the download goes on from where it stopped.
 const STALL_MS = 20000;
-const ATTEMPTS = 6;
+const ATTEMPTS = 10;
 
 // download to a temp file, check sha1, then move into place. Survives stalled and dropped connections: the part
 // already on disk is kept and asked for again with a Range request (a server that ignores it means starting over).
@@ -121,10 +121,13 @@ async function sync(gameDir, manifest, progress = () => {}) {
   // 2. download
   const total = todo.reduce((s, f) => s + f.size, 0) + archives.reduce((s, x) => s + x.archive.size, 0);
   let done = 0;
-  const tick = n => { done += n; progress('Загрузка', done, total); };
+  let failed = false;     // once one file is given up on, the others stop and stay quiet, so the error is not painted over
+  const tick = n => { if (!failed) { done += n; progress('Загрузка', done, total); } };
   const queue = [...todo];
   const workers = Array.from({ length: 6 }, async () => {
-    for (let f; (f = queue.shift()); ) await download(f.url, path.join(gameDir, f.path), f.sha1, tick);
+    try {
+      for (let f; !failed && (f = queue.shift()); ) await download(f.url, path.join(gameDir, f.path), f.sha1, tick);
+    } catch (e) { failed = true; queue.length = 0; throw e; }
   });
   await Promise.all(workers);
 

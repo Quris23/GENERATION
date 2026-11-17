@@ -245,3 +245,6 @@ footer {
 }
 
 #open-folder { white-space: normal; }
+
+/* a long name (ПРОДОЛЖИТЬ УСТАНОВКУ) keeps the button's size */
+.play.long { font-size: 17px; letter-spacing: 0.08em; }

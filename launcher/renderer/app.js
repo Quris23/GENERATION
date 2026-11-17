@@ -189,10 +189,12 @@ async function checkStatus() {
   try {
     statusInfo = await gen.status();
     showMemory();
-    const { remote, installed } = statusInfo;
-    if (!installed) { setStatus(`Сборка ${remote}: ещё не установлена`, 0); $('play').textContent = 'УСТАНОВИТЬ'; }
+    const { remote, installed, partial } = statusInfo;
+    if (!installed && partial) { setStatus(`Сборка ${remote}: установка не завершена — скачанное сохранено, докачается остальное`, 0); $('play').textContent = 'ПРОДОЛЖИТЬ УСТАНОВКУ'; }
+    else if (!installed) { setStatus(`Сборка ${remote}: ещё не установлена`, 0); $('play').textContent = 'УСТАНОВИТЬ'; }
     else if (installed !== remote) { setStatus(`Доступно обновление: ${installed} → ${remote}`, 0); $('play').textContent = 'ОБНОВИТЬ'; }
     else { setStatus(`Сборка ${remote} установлена`, 1); $('play').textContent = 'ИГРАТЬ'; }
+    $('play').classList.toggle('long', $('play').textContent.length > 12);
   } catch (e) {
     setStatus('Нет связи с сервером обновлений. Можно играть в установленную версию.', 0);
     $('play').textContent = 'ИГРАТЬ';
@@ -283,13 +285,14 @@ $('skin-from-nick').addEventListener('click', async () => {
 const mb = n => (n / 1048576).toFixed(0);
 // the big button while it works: its name changes (УСТАНОВКА / ОБНОВЛЕНИЕ / ЗАПУСК), it fills with the progress and
 // its stripes keep moving, so it never looks stuck or clickable
-const BUSY_LABEL = { 'УСТАНОВИТЬ': 'УСТАНОВКА', 'ОБНОВИТЬ': 'ОБНОВЛЕНИЕ', 'ИГРАТЬ': 'ЗАПУСК' };
+const BUSY_LABEL = { 'УСТАНОВИТЬ': 'УСТАНОВКА', 'ПРОДОЛЖИТЬ УСТАНОВКУ': 'УСТАНОВКА', 'ОБНОВИТЬ': 'ОБНОВЛЕНИЕ', 'ИГРАТЬ': 'ЗАПУСК' };
 let busyLabel = null;
 function setBusy(on, idleText) {
   const b = $('play');
+  if (on && busyLabel) return;          // already working: keep the label and the fill
   b.classList.toggle('busy', on);
   b.style.setProperty('--p', '0%');
-  if (on) { busyLabel = BUSY_LABEL[b.textContent] || 'ЗАПУСК'; b.textContent = busyLabel; b.disabled = true; }
+  if (on) { busyLabel = BUSY_LABEL[b.textContent] || 'ЗАПУСК'; b.textContent = busyLabel; b.disabled = true; b.classList.remove('long'); }
   else { busyLabel = null; if (idleText) b.textContent = idleText; }
 }
 
@@ -298,6 +301,7 @@ gen.onProgress(({ stage, done, total }) => {
   const big = total > 1048576;
   const size = big ? ` — ${mb(done)} из ${mb(total)} МБ` : '';
   setStatus(`${stage}${size}`, f);
+  if (!busyLabel) return;               // not installing (e.g. a straggler after an error): never paint over the status
   if (busyLabel) {
     const pct = Math.max(0, Math.min(100, Math.round(f * 100)));
     $('play').style.setProperty('--p', `${big ? pct : 0}%`);
@@ -314,14 +318,16 @@ gen.onGameExit(code => {
 
 $('play').addEventListener('click', async () => {
   settings = await gen.setSettings({ nickname: nickname() });
+  if ($('play').disabled || busyLabel) return;
   const idle = $('play').textContent;
   setBusy(true);
   const r = await gen.play();
+  if (r?.busy) return;                  // an install is already running: leave the button as it is
   if (!r?.ok) {
     toast(r?.error || 'Не удалось запустить');
     setBusy(false, idle);
     $('play').disabled = false;
-    setStatus('Ошибка', 0);
+    setStatus(`Ошибка: ${r?.error || 'не удалось запустить'}`, 0);
   } else {
     setBusy(false, 'ЗАПУЩЕНО');
     setStatus('Игра запущена', 1);
