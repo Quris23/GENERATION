@@ -127,17 +127,19 @@ ipcMain.handle('pack:status', async () => {
   return { remote: manifest.version, installed, partial, memory: manifest.memory };
 });
 
-// install / update everything, then start the game
-ipcMain.handle('pack:play', async () => {
+// install / update everything; with launch (the ИГРАТЬ button) then start the game. УСТАНОВИТЬ / ОБНОВИТЬ only install:
+// the player starts the game when they want to
+ipcMain.handle('pack:play', async (_e, { launch = true } = {}) => {
   if (busy) return { ok: false, busy: true };
   busy = true;
   const s = loadSettings();
   const progress = (stage, done, total) => send('progress', { stage, done, total });
   try {
-    if (!/^[A-Za-z0-9_]{3,16}$/.test(s.nickname)) throw new Error('Ник: 3–16 символов, латиница, цифры и _');
+    if (launch && !/^[A-Za-z0-9_]{3,16}$/.test(s.nickname)) throw new Error('Ник: 3–16 символов, латиница, цифры и _');
     const manifest = await pack.fetchManifest(MANIFEST_URL);
     const { javaBin, versionId } = await game.prepare(s.root, manifest, progress);
     await pack.sync(path.join(s.root, 'game'), manifest, progress);
+    if (!launch) return { ok: true, launched: false, version: manifest.version };
     progress('Запуск', 1, 1);
     await writeIntroVolume(path.join(s.root, 'game'), s.introVolume);
     const proc = await game.launchGame({
@@ -148,14 +150,15 @@ ipcMain.handle('pack:play', async () => {
     const log = fs.createWriteStream(logPath);
     proc.stdout?.pipe(log);
     proc.stderr?.pipe(log);
-    win.hide();
-    win.webContents.setBackgroundThrottling(false);
+    // out of the way while the game runs, but still in the Dock / taskbar: a click there brings it back. A full-screen
+    // window cannot be minimized on macOS, so that one is hidden (the Dock click still shows it, see 'activate')
+    if (isMac && win.isFullScreen()) win.hide(); else win.minimize();
     proc.on('exit', code => {
-      win.show();
+      showWindow();
       send('game:exit', code);
     });
     proc.unref();
-    return { ok: true };
+    return { ok: true, launched: true };
   } catch (e) {
     return { ok: false, error: e.message };
   } finally {
@@ -197,5 +200,15 @@ ipcMain.handle('app:fullscreen', () => win.setFullScreen(!win.isFullScreen()));
 ipcMain.handle('app:minimize', () => win.minimize());
 ipcMain.handle('app:window', () => ({ platform: process.platform, fullscreen: win.isFullScreen() }));
 
+function showWindow() {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+// one launcher at a time: opening it again (or clicking its Dock icon) brings the open one forward
+if (!app.requestSingleInstanceLock()) app.quit();
+app.on('second-instance', showWindow);
+app.on('activate', showWindow);
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => app.quit());

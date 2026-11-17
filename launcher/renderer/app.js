@@ -347,14 +347,21 @@ $('play').addEventListener('click', async () => {
   settings = await gen.setSettings({ nickname: nickname() });
   if ($('play').disabled || busyLabel) return;
   const idle = $('play').textContent;
+  const launch = idle === 'ИГРАТЬ';     // УСТАНОВИТЬ / ОБНОВИТЬ / ПРОДОЛЖИТЬ УСТАНОВКУ only install
   setBusy(true);
-  const r = await gen.play();
+  const r = await gen.play(launch);
   if (r?.busy) return;                  // an install is already running: leave the button as it is
   if (!r?.ok) {
     toast(r?.error || 'Не удалось запустить');
     setBusy(false, idle);
     $('play').disabled = false;
     setStatus(`Ошибка: ${r?.error || 'не удалось запустить'}`, 0);
+  } else if (!r.launched) {
+    setBusy(false, 'ИГРАТЬ');
+    $('play').disabled = false;
+    statusInfo = { ...statusInfo, installed: r.version };
+    setStatus(`Сборка ${r.version} установлена — можно играть`, 1);
+    toast('Сборка установлена', true);
   } else {
     setBusy(false, 'ЗАПУЩЕНО');
     setStatus('Игра запущена', 1);

@@ -1,7 +1,7 @@
 {
   "name": "generation-launcher",
   "productName": "The Last New Year",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Launcher for The Last New Year (GENERATION modpack)",
   "main": "src/main.js",
   "private": true,

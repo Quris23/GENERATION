@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('gen', {
   chooseFolder: () => ipcRenderer.invoke('folder:choose'),
   openGameFolder: () => ipcRenderer.invoke('folder:open'),
   status: () => ipcRenderer.invoke('pack:status'),
-  play: () => ipcRenderer.invoke('pack:play'),
+  play: launch => ipcRenderer.invoke('pack:play', { launch }),
   skin: () => ipcRenderer.invoke('skin:get'),
   skinFromFile: () => ipcRenderer.invoke('skin:file'),
   skinFromNick: nick => ipcRenderer.invoke('skin:nick', nick),
