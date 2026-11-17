@@ -1,5 +1,5 @@
-// Tetris for the wait while the pack downloads. Shown in the middle column during an install (body.installing) unless
-// the settings are open; it pauses itself whenever it is hidden. Pieces are Minecraft ore blocks drawn as 8×8 pixel art.
+// Tetris in the middle column, always there except while the settings are open (they take the column); it pauses
+// itself whenever it is hidden. Pieces are Minecraft ore blocks drawn as 8×8 pixel art.
 const $ = id => document.getElementById(id);
 const root = $('tetris');
 const COLS = 10, ROWS = 20;
@@ -44,7 +44,7 @@ for (const [k, { pal }] of Object.entries(BLOCKS)) {
 
 // ---- the panel ----------------------------------------------------------------------------------------------------------
 root.innerHTML = `
-  <div class="tetris-head"><h2>Тетрис</h2><span class="muted">пока качается сборка</span></div>
+  <div class="tetris-head"><h2>Тетрис</h2></div>
   <div class="tetris-body">
     <div class="tetris-board"><canvas id="t-board"></canvas><div id="t-over" class="tetris-over"></div></div>
     <div class="tetris-side">
@@ -277,7 +277,7 @@ function togglePause() {
 // ---- when to show it ----------------------------------------------------------------------------------------------------
 const visible = () => !root.classList.contains('hidden') && !document.body.classList.contains('settings-open');
 function sync() {
-  const show = document.body.classList.contains('installing');
+  const show = true;
   const was = !root.classList.contains('hidden');
   root.classList.toggle('hidden', !show);
   if (show && !was) {
