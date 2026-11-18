@@ -146,11 +146,28 @@ async function prefetchNeoForgeLibraries(installer, runtimeDir, progress) {
   await fetchAll(items, n => progress('NeoForge', (done += n), total), 8);
 }
 
+// NeoForge's version json can be there while the installer died half way: the game then starts without the patched
+// Minecraft jar ("minecraft [MISSING]" for every mod). That jar is what the installer produces last, so it tells whether
+// the install really finished.
+async function patchedClientExists(runtimeDir, vjson) {
+  try {
+    const v = JSON.parse(await fsp.readFile(vjson, 'utf8'));
+    const args = (v.arguments?.game || []).filter(a => typeof a === 'string');
+    const arg = name => args[args.indexOf(name) + 1];
+    const mc = arg('--fml.mcVersion'), neoForm = arg('--fml.neoFormVersion');
+    if (!mc || !neoForm) return true; // an unknown layout: do not reinstall on a guess
+    const ver = `${mc}-${neoForm}`;
+    return await exists(path.join(runtimeDir, 'libraries', 'net', 'minecraft', 'client', ver, `client-${ver}-srg.jar`));
+  } catch {
+    return true;
+  }
+}
+
 // ---- NeoForge: the official installer, headless --------------------------------------------------------------------------
 async function installNeoForge(runtimeDir, javaBin, neoVersion, progress) {
   const id = `neoforge-${neoVersion}`;
   const vjson = path.join(runtimeDir, 'versions', id, `${id}.json`);
-  if (await exists(vjson)) return id;
+  if ((await exists(vjson)) && (await patchedClientExists(runtimeDir, vjson))) return id;
   progress('NeoForge', 0, 1);
   const installer = path.join(runtimeDir, '.cache', `neoforge-${neoVersion}-installer.jar`);
   if (!(await exists(installer)))
@@ -167,7 +184,10 @@ async function installNeoForge(runtimeDir, javaBin, neoVersion, progress) {
   });
   let code = await run('--install-client');
   if (code !== 0 && !(await exists(vjson))) code = await run('--installClient');
-  if (!(await exists(vjson))) throw new Error('Установщик NeoForge завершился с ошибкой:\n' + log.join('').slice(-1500));
+  // the whole installer output next to the installer, so a failed install can be diagnosed afterwards
+  await fsp.writeFile(path.join(runtimeDir, '.cache', 'neoforge-installer.log'), log.join('')).catch(() => {});
+  if (!(await exists(vjson)) || !(await patchedClientExists(runtimeDir, vjson)))
+    throw new Error('Установщик NeoForge завершился с ошибкой (полный вывод: runtime/.cache/neoforge-installer.log):\n' + log.join('').slice(-1500));
   return id;
 }
 
