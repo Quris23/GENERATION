@@ -8,6 +8,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
+const AdmZip = require('adm-zip');
 const { download, sha1File, exists } = require('./pack');
 
 const VERSION_MANIFEST = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
@@ -121,6 +122,30 @@ async function installMinecraft(runtimeDir, mcVersion, progress) {
   return v;
 }
 
+// The installer downloads its ~50 libraries itself, with Java's HTTP client, and on some networks (a proxy, an antivirus,
+// Cloudflare turning away Java's user agent) that fails for every file from maven.neoforged.net ("Missing 31 libraries")
+// although the same site opens in a browser. So we fetch every library the installer needs with our own downloader
+// (resumable, sha1-checked) first; the installer then finds them in place and downloads nothing.
+async function prefetchNeoForgeLibraries(installer, runtimeDir, progress) {
+  const zip = new AdmZip(installer);
+  const libs = [];
+  for (const name of ['install_profile.json', 'version.json']) {
+    const entry = zip.getEntry(name);
+    if (entry) libs.push(...(JSON.parse(entry.getData().toString('utf8')).libraries || []));
+  }
+  const items = [];
+  const seen = new Set();
+  for (const lib of libs) {
+    const a = lib.downloads?.artifact;
+    if (!a?.url || !a.path || !a.sha1 || seen.has(a.path)) continue; // no url: the installer takes it from its own jar
+    seen.add(a.path);
+    items.push({ url: a.url, dest: path.join(runtimeDir, 'libraries', ...a.path.split('/')), sha1: a.sha1, size: a.size || 0 });
+  }
+  const total = items.reduce((n, i) => n + i.size, 0) || 1;
+  let done = 0;
+  await fetchAll(items, n => progress('NeoForge', (done += n), total), 8);
+}
+
 // ---- NeoForge: the official installer, headless --------------------------------------------------------------------------
 async function installNeoForge(runtimeDir, javaBin, neoVersion, progress) {
   const id = `neoforge-${neoVersion}`;
@@ -130,6 +155,7 @@ async function installNeoForge(runtimeDir, javaBin, neoVersion, progress) {
   const installer = path.join(runtimeDir, '.cache', `neoforge-${neoVersion}-installer.jar`);
   if (!(await exists(installer)))
     await download(`${NEOFORGE_MAVEN}/${neoVersion}/neoforge-${neoVersion}-installer.jar`, installer);
+  await prefetchNeoForgeLibraries(installer, runtimeDir, progress);
   const profiles = path.join(runtimeDir, 'launcher_profiles.json'); // the installer insists on this file
   if (!(await exists(profiles))) await fsp.writeFile(profiles, JSON.stringify({ profiles: {} }));
   const log = [];
