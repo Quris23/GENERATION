@@ -51,7 +51,8 @@ async function download(url, dest, sha1, onBytes) {
     let out;
     try {
       arm();
-      const res = await fetch(url, { redirect: 'follow', signal: ctl.signal, headers: have ? { Range: `bytes=${have}-` } : {} });
+      // a fresh query string each time: GitHub's CDN sometimes keeps serving the previous manifest for a few minutes
+      const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`, { redirect: 'follow', signal: ctl.signal, headers: have ? { Range: `bytes=${have}-` } : {} });
       if (res.status === 416) { startOver(); throw new Error('range not satisfiable'); }
       if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
       if (have && res.status !== 206) startOver();   // the server sent the whole file again
@@ -97,10 +98,21 @@ async function applyPin(file, set) {
   if (out !== text) await fsp.writeFile(file, out);
 }
 
+// the connection (often through a VPN) sometimes does not come up in time: retry a few times before giving up
 async function fetchManifest(url) {
-  const res = await fetch(url, { redirect: 'follow', cache: 'no-store', signal: AbortSignal.timeout(30000) });
-  if (!res.ok) throw new Error(`Не удалось получить описание сборки (HTTP ${res.status})`);
-  return res.json();
+  let last;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) await new Promise(r => setTimeout(r, attempt * 1500));
+    try {
+      // a fresh query string each time: GitHub's CDN sometimes keeps serving the previous manifest for a few minutes
+      const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`, { redirect: 'follow', cache: 'no-store', signal: AbortSignal.timeout(30000) });
+      if (!res.ok) throw new Error(`Не удалось получить описание сборки (HTTP ${res.status})`);
+      return await res.json();
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw new Error(last.cause?.code ? `${last.message} (${last.cause.code})` : last.message);
 }
 
 // progress(stage, done, total) — bytes

@@ -196,7 +196,7 @@ async function checkStatus() {
     else { setStatus(`Сборка ${remote} установлена`, 1); $('play').textContent = 'ИГРАТЬ'; }
     $('play').classList.toggle('long', $('play').textContent.length > 12);
   } catch (e) {
-    setStatus('Нет связи с сервером обновлений. Можно играть в установленную версию.', 0);
+    setStatus(`Нет связи с сервером обновлений (${e.message}). Можно играть в установленную версию.`, 0);
     $('play').textContent = 'ИГРАТЬ';
   }
   $('play').disabled = false;
